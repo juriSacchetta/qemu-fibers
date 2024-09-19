@@ -48,6 +48,9 @@ static const int kernel_feature_bits[] = {
     VIRTIO_F_IOMMU_PLATFORM,
     VIRTIO_F_RING_PACKED,
     VIRTIO_F_RING_RESET,
+    VIRTIO_F_IN_ORDER,
+    VIRTIO_F_NOTIFICATION_DATA,
+    VIRTIO_NET_F_RSC_EXT,
     VIRTIO_NET_F_HASH_REPORT,
     VHOST_INVALID_FEATURE_BIT
 };
@@ -55,6 +58,7 @@ static const int kernel_feature_bits[] = {
 /* Features supported by others. */
 static const int user_feature_bits[] = {
     VIRTIO_F_NOTIFY_ON_EMPTY,
+    VIRTIO_F_NOTIFICATION_DATA,
     VIRTIO_RING_F_INDIRECT_DESC,
     VIRTIO_RING_F_EVENT_IDX,
 
@@ -76,7 +80,9 @@ static const int user_feature_bits[] = {
     VIRTIO_F_IOMMU_PLATFORM,
     VIRTIO_F_RING_PACKED,
     VIRTIO_F_RING_RESET,
+    VIRTIO_F_IN_ORDER,
     VIRTIO_NET_F_RSS,
+    VIRTIO_NET_F_RSC_EXT,
     VIRTIO_NET_F_HASH_REPORT,
     VIRTIO_NET_F_GUEST_USO4,
     VIRTIO_NET_F_GUEST_USO6,
@@ -313,8 +319,8 @@ fail:
                 /* Queue might not be ready for start */
                 continue;
             }
-            int r = vhost_net_set_backend(&net->dev, &file);
-            assert(r >= 0);
+            int ret = vhost_net_set_backend(&net->dev, &file);
+            assert(ret >= 0);
         }
     }
     if (net->nc->info->poll) {
@@ -541,6 +547,16 @@ int vhost_set_vring_enable(NetClientState *nc, int enable)
     VHostNetState *net = get_vhost_net(nc);
     const VhostOps *vhost_ops = net->dev.vhost_ops;
 
+    /*
+     * vhost-vdpa network devices need to enable dataplane virtqueues after
+     * DRIVER_OK, so they can recover device state before starting dataplane.
+     * Because of that, we don't enable virtqueues here and leave it to
+     * net/vhost-vdpa.c.
+     */
+    if (nc->info->type == NET_CLIENT_DRIVER_VHOST_VDPA) {
+        return 0;
+    }
+
     nc->vring_enable = enable;
 
     if (vhost_ops && vhost_ops->vhost_set_vring_enable) {
@@ -629,8 +645,8 @@ err_start:
     if (net->nc->info->type == NET_CLIENT_DRIVER_TAP) {
         file.fd = VHOST_FILE_UNBIND;
         file.index = idx;
-        int r = vhost_net_set_backend(&net->dev, &file);
-        assert(r >= 0);
+        int ret = vhost_net_set_backend(&net->dev, &file);
+        assert(ret >= 0);
     }
 
     vhost_dev_stop(&net->dev, vdev, false);

@@ -88,7 +88,7 @@ static const VMStateDescription vmstate_etraxfs = {
     .name = "etraxfs",
     .version_id = 0,
     .minimum_version_id = 0,
-    .fields = (VMStateField[]) {
+    .fields = (const VMStateField[]) {
         VMSTATE_PTIMER(ptimer_t0, ETRAXTimerState),
         VMSTATE_PTIMER(ptimer_t1, ETRAXTimerState),
         VMSTATE_PTIMER(ptimer_wd, ETRAXTimerState),
@@ -357,7 +357,7 @@ static void etraxfs_timer_reset_enter(Object *obj, ResetType type)
     t->rw_intr_mask = 0;
 }
 
-static void etraxfs_timer_reset_hold(Object *obj)
+static void etraxfs_timer_reset_hold(Object *obj, ResetType type)
 {
     ETRAXTimerState *t = ETRAX_TIMER(obj);
 

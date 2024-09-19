@@ -262,7 +262,7 @@ typedef enum DPVideoFmt DPVideoFmt;
 static const VMStateDescription vmstate_dp = {
     .name = TYPE_XLNX_DP,
     .version_id = 2,
-    .fields = (VMStateField[]){
+    .fields = (const VMStateField[]){
         VMSTATE_UINT32_ARRAY(core_registers, XlnxDPState,
                              DP_CORE_REG_ARRAY_SIZE),
         VMSTATE_UINT32_ARRAY(avbufm_registers, XlnxDPState,
@@ -1302,6 +1302,10 @@ static void xlnx_dp_realize(DeviceState *dev, Error **errp)
     DisplaySurface *surface;
     struct audsettings as;
 
+    if (!AUD_register_card("xlnx_dp.audio", &s->aud_card, errp)) {
+        return;
+    }
+
     aux_bus_realize(s->aux_bus);
 
     qdev_realize(DEVICE(s->dpcd), BUS(s->aux_bus), &error_fatal);
@@ -1319,8 +1323,6 @@ static void xlnx_dp_realize(DeviceState *dev, Error **errp)
     as.nchannels = 2;
     as.fmt = AUDIO_FORMAT_S16;
     as.endianness = 0;
-
-    AUD_register_card("xlnx_dp.audio", &s->aud_card);
 
     s->amixer_output_stream = AUD_open_out(&s->aud_card,
                                            s->amixer_output_stream,

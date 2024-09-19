@@ -881,7 +881,8 @@ static void sunhme_realize(PCIDevice *pci_dev, Error **errp)
 
     qemu_macaddr_default_if_unset(&s->conf.macaddr);
     s->nic = qemu_new_nic(&net_sunhme_info, &s->conf,
-                          object_get_typename(OBJECT(d)), d->id, s);
+                          object_get_typename(OBJECT(d)), d->id,
+                          &d->mem_reentrancy_guard, s);
     qemu_format_nic_info_str(qemu_get_queue(s->nic), s->conf.macaddr.a);
 }
 
@@ -924,7 +925,7 @@ static const VMStateDescription vmstate_hme = {
     .name = "sunhme",
     .version_id = 0,
     .minimum_version_id = 0,
-    .fields = (VMStateField[]) {
+    .fields = (const VMStateField[]) {
         VMSTATE_PCI_DEVICE(parent_obj, SunHMEState),
         VMSTATE_MACADDR(conf.macaddr, SunHMEState),
         VMSTATE_UINT32_ARRAY(sebregs, SunHMEState, (HME_SEB_REG_SIZE >> 2)),

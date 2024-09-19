@@ -110,11 +110,14 @@ static void
 dbus_gl_scanout_dmabuf(DisplayChangeListener *dcl,
                        QemuDmaBuf *dmabuf)
 {
+    uint32_t width, height;
+
     DBusDisplayConsole *ddc = container_of(dcl, DBusDisplayConsole, dcl);
 
-    dbus_display_console_set_size(ddc,
-                                  dmabuf->width,
-                                  dmabuf->height);
+    width = qemu_dmabuf_get_width(dmabuf);
+    height = qemu_dmabuf_get_height(dmabuf);
+
+    dbus_display_console_set_size(ddc, width, height);
 }
 
 static void
@@ -386,7 +389,7 @@ dbus_mouse_rel_motion(DBusDisplayConsole *ddc,
 {
     trace_dbus_mouse_rel_motion(dx, dy);
 
-    if (qemu_input_is_absolute()) {
+    if (qemu_input_is_absolute(ddc->dcl.con)) {
         g_dbus_method_invocation_return_error(
             invocation, DBUS_DISPLAY_ERROR,
             DBUS_DISPLAY_ERROR_INVALID,
@@ -453,7 +456,7 @@ dbus_mouse_set_pos(DBusDisplayConsole *ddc,
 
     trace_dbus_mouse_set_pos(x, y);
 
-    if (!qemu_input_is_absolute()) {
+    if (!qemu_input_is_absolute(ddc->dcl.con)) {
         g_dbus_method_invocation_return_error(
             invocation, DBUS_DISPLAY_ERROR,
             DBUS_DISPLAY_ERROR_INVALID,
@@ -514,7 +517,7 @@ static void
 dbus_mouse_update_is_absolute(DBusDisplayConsole *ddc)
 {
     g_object_set(ddc->iface_mouse,
-                 "is-absolute", qemu_input_is_absolute(),
+                 "is-absolute", qemu_input_is_absolute(ddc->dcl.con),
                  NULL);
 }
 

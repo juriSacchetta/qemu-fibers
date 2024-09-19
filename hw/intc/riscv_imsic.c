@@ -333,7 +333,7 @@ static void riscv_imsic_realize(DeviceState *dev, Error **errp)
     RISCVIMSICState *imsic = RISCV_IMSIC(dev);
     RISCVCPU *rcpu = RISCV_CPU(cpu_by_arch_id(imsic->hartid));
     CPUState *cpu = cpu_by_arch_id(imsic->hartid);
-    CPURISCVState *env = cpu ? cpu->env_ptr : NULL;
+    CPURISCVState *env = cpu ? cpu_env(cpu) : NULL;
 
     if (!kvm_irqchip_in_kernel()) {
         imsic->num_eistate = imsic->num_pages * imsic->num_irqs;
@@ -386,7 +386,7 @@ static const VMStateDescription vmstate_riscv_imsic = {
     .name = "riscv_imsic",
     .version_id = 1,
     .minimum_version_id = 1,
-    .fields = (VMStateField[]) {
+    .fields = (const VMStateField[]) {
             VMSTATE_VARRAY_UINT32(eidelivery, RISCVIMSICState,
                                   num_pages, 0,
                                   vmstate_info_uint32, uint32_t),

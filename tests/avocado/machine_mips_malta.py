@@ -11,8 +11,7 @@ import os
 import gzip
 import logging
 
-from avocado import skip
-from avocado import skipIf
+from avocado import skipUnless
 from avocado import skipUnless
 from avocado.utils import archive
 from avocado_qemu import QemuSystemTest
@@ -72,9 +71,9 @@ class MaltaMachineFramebuffer(QemuSystemTest):
         framebuffer_ready = 'Console: switching to colour frame buffer device'
         wait_for_console_pattern(self, framebuffer_ready,
                                  failure_message='Kernel panic - not syncing')
-        self.vm.command('human-monitor-command', command_line='stop')
-        self.vm.command('human-monitor-command',
-                        command_line='screendump %s' % screendump_path)
+        self.vm.cmd('human-monitor-command', command_line='stop')
+        self.vm.cmd('human-monitor-command',
+                    command_line='screendump %s' % screendump_path)
         logger = logging.getLogger('framebuffer')
 
         match_threshold = 0.95
@@ -94,7 +93,6 @@ class MaltaMachineFramebuffer(QemuSystemTest):
             cv2.imwrite(debug_png, screendump_bgr)
         self.assertGreaterEqual(tuxlogo_count, cpu_cores_count)
 
-    @skip('https://gitlab.com/qemu-project/qemu/-/issues/1884')
     def test_mips_malta_i6400_framebuffer_logo_1core(self):
         """
         :avocado: tags=arch:mips64el
@@ -103,33 +101,34 @@ class MaltaMachineFramebuffer(QemuSystemTest):
         """
         self.do_test_i6400_framebuffer_logo(1)
 
-    @skip('https://gitlab.com/qemu-project/qemu/-/issues/1884')
-    @skipIf(os.getenv('GITLAB_CI'), 'Running on GitLab')
+    @skipUnless(os.getenv('QEMU_TEST_FLAKY_TESTS'), 'Test is unstable on GitLab')
     def test_mips_malta_i6400_framebuffer_logo_7cores(self):
         """
         :avocado: tags=arch:mips64el
         :avocado: tags=machine:malta
         :avocado: tags=cpu:I6400
         :avocado: tags=mips:smp
+        :avocado: tags=flaky
         """
         self.do_test_i6400_framebuffer_logo(7)
 
-    @skip('https://gitlab.com/qemu-project/qemu/-/issues/1884')
-    @skipIf(os.getenv('GITLAB_CI'), 'Running on GitLab')
+    @skipUnless(os.getenv('QEMU_TEST_FLAKY_TESTS'), 'Test is unstable on GitLab')
     def test_mips_malta_i6400_framebuffer_logo_8cores(self):
         """
         :avocado: tags=arch:mips64el
         :avocado: tags=machine:malta
         :avocado: tags=cpu:I6400
         :avocado: tags=mips:smp
+        :avocado: tags=flaky
         """
         self.do_test_i6400_framebuffer_logo(8)
 
 class MaltaMachine(QemuSystemTest):
 
     def do_test_yamon(self):
-        rom_url = ('http://www.imgtec.com/tools/mips-tools/downloads/'
-                   'yamon/yamon-bin-02.22.zip')
+        rom_url = ('https://s3-eu-west-1.amazonaws.com/'
+                   'downloads-mips/mips-downloads/'
+                   'YAMON/yamon-bin-02.22.zip')
         rom_hash = '8da7ecddbc5312704b8b324341ee238189bde480'
         zip_path = self.fetch_asset(rom_url, asset_hash=rom_hash)
 
@@ -146,7 +145,6 @@ class MaltaMachine(QemuSystemTest):
         wait_for_console_pattern(self, prompt)
         self.vm.shutdown()
 
-    @skip('https://gitlab.com/qemu-project/qemu/-/issues/1884')
     def test_mipsel_malta_yamon(self):
         """
         :avocado: tags=arch:mipsel
@@ -155,7 +153,6 @@ class MaltaMachine(QemuSystemTest):
         """
         self.do_test_yamon()
 
-    @skip('https://gitlab.com/qemu-project/qemu/-/issues/1884')
     def test_mips64el_malta_yamon(self):
         """
         :avocado: tags=arch:mips64el

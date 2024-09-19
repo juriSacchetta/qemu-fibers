@@ -96,7 +96,9 @@ static const struct {
 } drm_format_pixman_map[] = {
     { DRM_FORMAT_RGB888,   PIXMAN_LE_r8g8b8   },
     { DRM_FORMAT_ARGB8888, PIXMAN_LE_a8r8g8b8 },
-    { DRM_FORMAT_XRGB8888, PIXMAN_LE_x8r8g8b8 }
+    { DRM_FORMAT_XRGB8888, PIXMAN_LE_x8r8g8b8 },
+    { DRM_FORMAT_XBGR8888, PIXMAN_LE_x8b8g8r8 },
+    { DRM_FORMAT_ABGR8888, PIXMAN_LE_a8b8g8r8 },
 };
 
 pixman_format_code_t qemu_drm_format_to_pixman(uint32_t drm_format)
@@ -143,6 +145,7 @@ int qemu_pixman_get_type(int rshift, int gshift, int bshift)
     return type;
 }
 
+#ifdef CONFIG_PIXMAN
 pixman_format_code_t qemu_pixman_get_format(PixelFormat *pf)
 {
     pixman_format_code_t format;
@@ -156,6 +159,7 @@ pixman_format_code_t qemu_pixman_get_format(PixelFormat *pf)
     }
     return format;
 }
+#endif
 
 /*
  * Return true for known-good pixman conversions.
@@ -184,6 +188,7 @@ bool qemu_pixman_check_format(DisplayChangeListener *dcl,
     }
 }
 
+#ifdef CONFIG_PIXMAN
 pixman_image_t *qemu_pixman_linebuf_create(pixman_format_code_t format,
                                            int width)
 {
@@ -209,6 +214,7 @@ pixman_image_t *qemu_pixman_mirror_create(pixman_format_code_t format,
                                     NULL,
                                     pixman_image_get_stride(image));
 }
+#endif
 
 void qemu_pixman_image_unref(pixman_image_t *image)
 {
@@ -218,6 +224,7 @@ void qemu_pixman_image_unref(pixman_image_t *image)
     pixman_image_unref(image);
 }
 
+#ifdef CONFIG_PIXMAN
 pixman_image_t *qemu_pixman_glyph_from_vgafont(int height, const uint8_t *font,
                                                unsigned int ch)
 {
@@ -260,3 +267,4 @@ void qemu_pixman_glyph_render(pixman_image_t *glyph,
     pixman_image_unref(ifg);
     pixman_image_unref(ibg);
 }
+#endif /* CONFIG_PIXMAN */

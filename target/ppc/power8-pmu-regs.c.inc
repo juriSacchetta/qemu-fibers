@@ -106,7 +106,7 @@ static void write_MMCR0_common(DisasContext *ctx, TCGv val)
      * translator_io_start() beforehand.
      */
     translator_io_start(&ctx->base);
-    gen_helper_store_mmcr0(cpu_env, val);
+    gen_helper_store_mmcr0(tcg_env, val);
 
     /*
      * End the translation block because MMCR0 writes can change
@@ -175,12 +175,17 @@ void spr_write_MMCR2_ureg(DisasContext *ctx, int sprn, int gprn)
     gen_store_spr(SPR_POWER_MMCR2, masked_gprn);
 }
 
+void spr_write_MMCRA(DisasContext *ctx, int sprn, int gprn)
+{
+    gen_helper_store_mmcrA(tcg_env, cpu_gpr[gprn]);
+}
+
 void spr_read_PMC(DisasContext *ctx, int gprn, int sprn)
 {
     TCGv_i32 t_sprn = tcg_constant_i32(sprn);
 
     translator_io_start(&ctx->base);
-    gen_helper_read_pmc(cpu_gpr[gprn], cpu_env, t_sprn);
+    gen_helper_read_pmc(cpu_gpr[gprn], tcg_env, t_sprn);
 }
 
 void spr_read_PMC14_ureg(DisasContext *ctx, int gprn, int sprn)
@@ -213,7 +218,7 @@ void spr_write_PMC(DisasContext *ctx, int sprn, int gprn)
     TCGv_i32 t_sprn = tcg_constant_i32(sprn);
 
     translator_io_start(&ctx->base);
-    gen_helper_store_pmc(cpu_env, t_sprn, cpu_gpr[gprn]);
+    gen_helper_store_pmc(tcg_env, t_sprn, cpu_gpr[gprn]);
 }
 
 void spr_write_PMC14_ureg(DisasContext *ctx, int sprn, int gprn)
@@ -249,7 +254,7 @@ void spr_write_MMCR0(DisasContext *ctx, int sprn, int gprn)
 void spr_write_MMCR1(DisasContext *ctx, int sprn, int gprn)
 {
     translator_io_start(&ctx->base);
-    gen_helper_store_mmcr1(cpu_env, cpu_gpr[gprn]);
+    gen_helper_store_mmcr1(tcg_env, cpu_gpr[gprn]);
 }
 #else
 void spr_read_MMCR0_ureg(DisasContext *ctx, int gprn, int sprn)
