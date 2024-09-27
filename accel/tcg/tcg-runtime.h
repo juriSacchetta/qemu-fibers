@@ -326,6 +326,6 @@ DEF_HELPER_FLAGS_5(gvec_bitsel, TCG_CALL_NO_RWG, void, ptr, ptr, ptr, ptr, i32)
 
 #ifdef QEMU_FIBERS
 
-DEF_HELPER_0(fibers_scheduler, void)
+DEF_HELPER_0(fiber_scheduler, void)
 
 #endif

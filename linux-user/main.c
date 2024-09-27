@@ -198,7 +198,7 @@ void task_settid(TaskState *ts)
 {
     if (ts->ts_tid == 0) {
     #ifdef QEMU_FIBERS
-        ts->ts_tid = fibers_syscall_gettid();
+        ts->ts_tid = (pid_t)fiber_syscall(gettid)();
     #else
         ts->ts_tid = (pid_t)syscall(SYS_gettid);
     #endif
@@ -955,7 +955,7 @@ int main(int argc, char **argv, char **envp)
     target_argv[target_argc] = NULL;
 
 #ifdef QEMU_FIBERS
-    fibers_init(env);
+    fiber_init(env);
 #endif
 
     ts = g_new0(TaskState, 1);

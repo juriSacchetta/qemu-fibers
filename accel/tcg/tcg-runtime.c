@@ -153,9 +153,9 @@ void HELPER(exit_atomic)(CPUArchState *env)
     cpu_loop_exit_atomic(env_cpu(env), GETPC());
 }
 
-extern void fibers_call_scheduler(void);
+extern void fiber_invoke_scheduler(void);
 
-void HELPER(fibers_scheduler)(void)
+void HELPER(fiber_scheduler)(void)
 {
-    fibers_call_scheduler();
+    fiber_invoke_scheduler();
 }

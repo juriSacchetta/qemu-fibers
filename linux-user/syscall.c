@@ -1552,7 +1552,7 @@ static abi_long do_ppoll(abi_long arg1, abi_long arg2, abi_long arg3,
         }
 
 #ifdef QEMU_FIBERS
-        ret = get_errno(fibers_syscall_ppoll(pfd, nfds, timeout_ts, set));
+        ret = get_errno(fiber_syscall(ppoll)(pfd, nfds, timeout_ts, set));
 #else
         ret = get_errno(safe_ppoll(pfd, nfds, timeout_ts,
                                    set, SIGSET_T_SIZE));
@@ -1585,7 +1585,7 @@ static abi_long do_ppoll(abi_long arg1, abi_long arg2, abi_long arg3,
               pts = NULL;
           }
 #ifdef QEMU_FIBERS
-          ret = get_errno(fibers_syscall_ppoll(pfd, nfds, pts, NULL));
+          ret = get_errno(fiber_syscall(ppoll)(pfd, nfds, pts, NULL));
 #else
           ret = get_errno(safe_ppoll(pfd, nfds, pts, NULL, 0));
 #endif
@@ -3227,7 +3227,7 @@ static abi_long do_connect(int sockfd, abi_ulong target_addr,
     ret = target_to_host_sockaddr(sockfd, addr, target_addr, addrlen);
     if (ret) return ret;
 #ifdef QEMU_FIBERS
-        return get_errno(fibers_syscall_connect(sockfd, addr, addrlen));
+        return get_errno(fiber_syscall(connect)(sockfd, addr, addrlen));
 #else
         return get_errno(safe_connect(sockfd, addr, addrlen));
 #endif
@@ -3433,7 +3433,7 @@ static abi_long do_accept4(int fd, abi_ulong target_addr,
 
     if (target_addr == 0) {
 #ifdef QEMU_FIBERS
-        return get_errno(fibers_syscall_accept4(fd, NULL, NULL, host_flags));
+        return get_errno(fiber_syscall(accept4)(fd, NULL, NULL, host_flags));
 #else
         return get_errno(safe_accept4(fd, NULL, NULL, host_flags));
 #endif
@@ -3455,7 +3455,7 @@ static abi_long do_accept4(int fd, abi_ulong target_addr,
 
     ret_addrlen = addrlen;
 #ifdef QEMU_FIBERS
-    ret = get_errno(fibers_syscall_accept4(fd, addr, &ret_addrlen, host_flags));
+    ret = get_errno(fiber_syscall(accept4)(fd, addr, &ret_addrlen, host_flags));
 #else
     ret = get_errno(safe_accept4(fd, addr, &ret_addrlen, host_flags));
 #endif
@@ -3582,14 +3582,14 @@ static abi_long do_sendto(int fd, abi_ulong msg, size_t len, int flags,
             goto fail;
         }
 #ifdef QEMU_FIBERS
-        ret = get_errno(fibers_syscall_sendto(fd, host_msg, len, flags,
+        ret = get_errno(fiber_syscall(sendto)(fd, host_msg, len, flags,
                                                   addr, addrlen));
 #else
         ret = get_errno(safe_sendto(fd, host_msg, len, flags, addr, addrlen));
 #endif
     } else {
 #ifdef QEMU_FIBERS
-        ret = get_errno(fibers_syscall_sendto(fd, host_msg, len, flags, NULL, 0));
+        ret = get_errno(fiber_syscall(sendto)(fd, host_msg, len, flags, NULL, 0));
 #else
         ret = get_errno(safe_sendto(fd, host_msg, len, flags, NULL, 0));
 #endif
@@ -3633,7 +3633,7 @@ static abi_long do_recvfrom(int fd, abi_ulong msg, size_t len, int flags,
         addr = alloca(addrlen);
         ret_addrlen = addrlen;
 #ifdef QEMU_FIBERS
-        ret = get_errno(fibers_syscall_recvfrom(fd, host_msg, len, flags,
+        ret = get_errno(fiber_syscall_recvfrom(fd, host_msg, len, flags,
                                     addr, &ret_addrlen));
 #else
         ret = get_errno(safe_recvfrom(fd, host_msg, len, flags,
@@ -3643,7 +3643,7 @@ static abi_long do_recvfrom(int fd, abi_ulong msg, size_t len, int flags,
         addr = NULL; /* To keep compiler quiet.  */
         addrlen = 0; /* To keep compiler quiet.  */
 #ifdef QEMU_FIBERS
-        ret = get_errno(fibers_syscall_recvfrom(fd, host_msg, len, flags,
+        ret = get_errno(fiber_syscall_recvfrom(fd, host_msg, len, flags,
                                     NULL, 0));
 #else
         ret = get_errno(safe_recvfrom(fd, host_msg, len, flags, NULL, 0));
@@ -6416,7 +6416,7 @@ static abi_long do_prctl(CPUArchState *env, abi_long option, abi_long arg2,
                 return -TARGET_EFAULT;
             }
 #ifdef QEMU_FIBERS
-            ret = get_errno(fibers_syscall_prctl(PR_GET_NAME, (uintptr_t)name,
+            ret = get_errno(fiber_syscall_prctl(PR_GET_NAME, (uintptr_t)name,
                                   arg3, arg4, arg5));
 #else
             ret = get_errno(prctl(PR_GET_NAME, (uintptr_t)name,
@@ -6432,7 +6432,7 @@ static abi_long do_prctl(CPUArchState *env, abi_long option, abi_long arg2,
                 return -TARGET_EFAULT;
             }
 #ifdef QEMU_FIBERS
-            ret = get_errno(fibers_syscall_prctl(PR_SET_NAME, (uintptr_t)name,
+            ret = get_errno(fiber_syscall_prctl(PR_SET_NAME, (uintptr_t)name,
                                   arg3, arg4, arg5));
 #else
             ret = get_errno(prctl(PR_SET_NAME, (uintptr_t)name,
@@ -6574,7 +6574,7 @@ static void *clone_func(void *arg)
     tcg_register_thread();
     info->tid = sys_gettid();
 #else
-    info->tid = fibers_syscall_gettid();
+    info->tid = fiber_syscall_gettid();
 #endif
     env = info->env;
     cpu = env_cpu(env);
@@ -6725,7 +6725,8 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
 #endif
         cpu->random_seed = qemu_guest_random_seed_thread_part1();
 #ifdef QEMU_FIBERS
-        ret = fibers_register_thread(pth_spawn(attr, env_cpu(info.env), clone_func, &info), env);
+        //TODO: fix this
+        ret = fiber_register(pth_spawn(attr, env_cpu(info.env), clone_func, &info), env);
         pth_sigmask(SIG_SETMASK, &info.sigmask, NULL);
         pth_attr_destroy(attr);
         if (ret != -1) {
@@ -6794,7 +6795,7 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
             cpu_clone_regs_child(env, newsp, flags);
             fork_end(ret);
 #ifdef QEMU_FIBERS
-            fibers_fork_end(1);
+            fiber_fork_end(1);
 #endif
             /* There is a race condition here.  The parent process could
                theoretically read the TID in the child process before the child
@@ -7845,32 +7846,38 @@ static int do_sys_futex(int *uaddr, int op, int val,
     g_assert_not_reached();
 }
 #endif
-#ifndef QEMU_FIBERS
+
 static int do_safe_futex(int *uaddr, int op, int val,
                          const struct timespec *timeout, int *uaddr2,
                          int val3)
 {
 #if HOST_LONG_BITS == 64
-#if defined(__NR_futex)
+    #if defined(__NR_futex)
     /* always a 64-bit time_t, it doesn't define _time64 version  */
-    return get_errno(safe_futex(uaddr, op, val, timeout, uaddr2, val3));
-#endif
+        #if defined(QEMU_FIBERS)
+            return get_errno(fiber_syscall(futex)(uaddr, op, val, timeout, uaddr2, val3));
+        #else
+            return get_errno(safe_futex(uaddr, op, val, timeout, uaddr2, val3));
+        #endif
+    #endif
 #else /* HOST_LONG_BITS == 64 */
-#if defined(__NR_futex_time64)
-    if (sizeof(timeout->tv_sec) == 8) {
-        /* _time64 function on 32bit arch */
-        return get_errno(safe_futex_time64(uaddr, op, val, timeout, uaddr2,
-                                           val3));
-    }
-#endif
-#if defined(__NR_futex)
-    /* old function on 32bit arch */
-    return get_errno(safe_futex(uaddr, op, val, timeout, uaddr2, val3));
-#endif
+    #if defined QEMU_FIBERS
+    fail();
+    #endif
+    #if defined(__NR_futex_time64)
+        if (sizeof(timeout->tv_sec) == 8) {
+            /* _time64 function on 32bit arch */
+            return get_errno(safe_futex_time64(uaddr, op, val, timeout, uaddr2,
+                                            val3));
+        }
+    #endif
+    #if defined(__NR_futex)
+        /* old function on 32bit arch */
+        return get_errno(safe_futex(uaddr, op, val, timeout, uaddr2, val3));
+    #endif
 #endif /* HOST_LONG_BITS == 64 */
     return -TARGET_ENOSYS;
 }
-#endif
 
 /* ??? Using host futex calls even when target atomic operations
    are not really atomic probably breaks things.  However implementing
@@ -7941,11 +7948,7 @@ static int do_futex(CPUState *cpu, bool time64, target_ulong uaddr,
             return -TARGET_EFAULT;
         }
     }
-#ifdef QEMU_FIBERS
-    return get_errno(fibers_syscall_futex(g2h(cpu, uaddr), base_op, val, pts, timeout, haddr2, val3));
-#else
     return do_safe_futex(g2h(cpu, uaddr), op, val, pts, haddr2, val3);
-#endif
 }
 #endif
 
@@ -9260,7 +9263,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             if (ts->child_tidptr) {
                 put_user_u32(0, ts->child_tidptr);
 #ifdef QEMU_FIBERS
-                fibers_syscall_futex(g2h(cpu, ts->child_tidptr), FUTEX_WAKE, INT_MAX, NULL, 0, NULL, 0);
+                fiber_syscall_futex(g2h(cpu, ts->child_tidptr), FUTEX_WAKE, INT_MAX, NULL, NULL, 0);
 #else
                 do_sys_futex(g2h(cpu, ts->child_tidptr),
                              FUTEX_WAKE, INT_MAX, NULL, NULL, 0);
@@ -9284,7 +9287,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             thread_cpu = NULL;
             g_free(ts);
 #ifdef QEMU_FIBERS
-            fibers_unregister_thread(pth_self());
+            fiber_unregister(pth_self());
             pth_exit(NULL);
 #else
             rcu_unregister_thread();
@@ -9301,7 +9304,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
         preexit_cleanup(cpu_env, arg1);
 
 #ifdef QEMU_FIBERS
-        fibers_unregister_thread(pth_self());
+        fiber_unregister(pth_self());
 #endif
         _exit(arg1);
 
@@ -9309,14 +9312,14 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
     case TARGET_NR_read:
             if (arg2 == 0 && arg3 == 0) {
 #ifdef QEMU_FIBERS
-                return get_errno(fibers_syscall_read(arg1, 0, 0));
+                return get_errno(fiber_syscall_read(arg1, 0, 0));
 #else
                 return get_errno(safe_read(arg1, 0, 0));
 #endif
             } else {
                 if (!(p = lock_user(VERIFY_WRITE, arg2, arg3, 0))) return -TARGET_EFAULT;
 #ifdef QEMU_FIBERS
-                ret = get_errno(fibers_syscall_read(arg1, p, arg3));
+                ret = get_errno(fiber_syscall_read(arg1, p, arg3));
 #else
                 ret = get_errno(safe_read(arg1, p, arg3));
 #endif
@@ -9330,7 +9333,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
     case TARGET_NR_write:
             if (arg2 == 0 && arg3 == 0) {
 #ifdef QEMU_FIBERS
-                return get_errno(fibers_syscall_write(arg1, 0, 0));
+                return get_errno(fiber_syscall_write(arg1, 0, 0));
 #else
                 return get_errno(safe_write(arg1, 0, 0));
 #endif
@@ -9343,7 +9346,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
                 ret = fd_trans_target_to_host_data(arg1)(copy, arg3);
                 if (ret >= 0) {
 #ifdef QEMU_FIBERS
-                    ret = get_errno(fibers_syscall_write(arg1, copy, ret));
+                    ret = get_errno(fiber_syscall_write(arg1, copy, ret));
 #else
                     ret = get_errno(safe_write(arg1, copy, ret));
 #endif
@@ -9351,7 +9354,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
                 g_free(copy);
             } else {
 #ifdef QEMU_FIBERS
-                ret = get_errno(fibers_syscall_write(arg1, p, arg3));
+                ret = get_errno(fiber_syscall_write(arg1, p, arg3));
 #else
                 ret = get_errno(safe_write(arg1, p, arg3));
 #endif
@@ -9445,7 +9448,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
         {
             int status;
 #ifdef QEMU_FIBERS
-            ret = get_errno(fibers_syscall_waitpid(arg1, &status, arg3, 0));
+            ret = get_errno(fiber_syscall_waitpid(arg1, &status, arg3, 0));
 #else
             ret = get_errno(safe_wait4(arg1, &status, arg3, 0));
 #endif
@@ -11107,7 +11110,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             else
                 rusage_ptr = NULL;
 #ifdef QEMU_FIBERS
-            ret = get_errno(fibers_syscall_wait4(arg1, &status, arg3, rusage_ptr));
+            ret = get_errno(fiber_syscall_wait4(arg1, &status, arg3, rusage_ptr));
 #else
             ret = get_errno(safe_wait4(arg1, &status, arg3, rusage_ptr));
 #endif
@@ -11388,7 +11391,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             struct iovec *vec = lock_iovec(VERIFY_WRITE, arg2, arg3, 0);
             if (vec != NULL) {
 #ifdef QEMU_FIBERS
-                ret = get_errno(fibers_syscall_readv(arg1, vec, arg3));
+                ret = get_errno(fiber_syscall_readv(arg1, vec, arg3));
 #else
                 ret = get_errno(safe_readv(arg1, vec, arg3));
 #endif
@@ -11403,7 +11406,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             struct iovec *vec = lock_iovec(VERIFY_READ, arg2, arg3, 1);
             if (vec != NULL) {
 #if QEMU_FIBERS
-                ret = get_errno(fibers_syscall_writev(arg1, vec, arg3));
+                ret = get_errno(fiber_syscall_writev(arg1, vec, arg3));
 #else
                 ret = get_errno(safe_writev(arg1, vec, arg3));
 #endif
@@ -11699,7 +11702,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             struct timespec req, rem;
             target_to_host_timespec(&req, arg1);
 #ifdef QEMU_FIBERS
-            ret = get_errno(fibers_syscall_nanosleep(&req));
+            ret = get_errno(fiber_syscall_nanosleep(&req, &rem));
 #else
             ret = get_errno(safe_nanosleep(&req, &rem));
 #endif
@@ -11733,7 +11736,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
         }
 #ifdef QEMU_FIBERS
         //TODO: Check here, the correct one is pread64
-        ret = get_errno(fibers_syscall_pread64(arg1, p, arg3, target_offset64(arg4, arg5)));
+        ret = get_errno(fiber_syscall_pread64(arg1, p, arg3, target_offset64(arg4, arg5)));
 #else
         ret = get_errno(pread64(arg1, p, arg3, target_offset64(arg4, arg5)));
 #endif
@@ -11754,7 +11757,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             }
         }
 #ifdef QEMU_FIBERS
-        ret = get_errno(fibers_syscall_pwrite64(arg1, p, arg3, target_offset64(arg4, arg5)));
+        ret = get_errno(fiber_syscall_pwrite64(arg1, p, arg3, target_offset64(arg4, arg5)));
 #else
         ret = get_errno(pwrite64(arg1, p, arg3, target_offset64(arg4, arg5)));
 #endif
@@ -12671,7 +12674,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
 #endif
     case TARGET_NR_gettid:
 #ifdef QEMU_FIBERS
-        return get_errno(fibers_syscall_gettid());
+        return get_errno(fiber_syscall_gettid());
 #else
         return get_errno(sys_gettid());
 #endif
@@ -12970,7 +12973,8 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             return -TARGET_EFAULT;
         }
 #ifdef QEMU_FIBERS
-        ret = get_errno(fibers_syscall_clock_nanosleep((clockid_t) arg1, &ts));
+        ret = get_errno(fiber_syscall(clock_nanosleep)(arg1, arg2,
+                                             &ts, arg4 ? &ts : NULL));
 #else
         ret = get_errno(safe_clock_nanosleep(arg1, arg2,
                                              &ts, arg4 ? &ts : NULL));
@@ -12997,7 +13001,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             return -TARGET_EFAULT;
         }
 #ifdef QEMU_FIBERS
-        ret = get_errno(fibers_syscall_clock_nanosleep((clockid_t) arg1, &ts));
+        ret = get_errno(fiber_syscall_clock_nanosleep((clockid_t) arg1, &ts));
 #else
         ret = get_errno(safe_clock_nanosleep(arg1, arg2,
                                              &ts, arg4 ? &ts : NULL));
@@ -13017,7 +13021,7 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
         ts->child_tidptr = arg1;
         /* do not call host set_tid_address() syscall, instead return tid() */
 #ifdef QEMU_FIBERS
-        return get_errno(fibers_syscall_gettid());
+        return get_errno(fiber_syscall_gettid());
 #else
         return get_errno(sys_gettid());
 #endif
@@ -13026,13 +13030,13 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
 
     case TARGET_NR_tkill:
 #ifdef QEMU_FIBERS
-        return get_errno(fibers_syscall_tkill(arg1, target_to_host_signal(arg2)));
+        return get_errno(fiber_syscall_tkill(arg1, target_to_host_signal(arg2)));
 #else
         return get_errno(safe_tkill((int)arg1, target_to_host_signal(arg2)));
 #endif
     case TARGET_NR_tgkill:
 #ifdef QEMU_FIBERS
-        return get_errno(fibers_syscall_tgkill((int)arg1, (int)arg2, target_to_host_signal(arg3)));
+        return get_errno(fiber_syscall_tgkill((int)arg1, (int)arg2, target_to_host_signal(arg3)));
 #else
         return get_errno(safe_tgkill((int)arg1, (int)arg2, target_to_host_signal(arg3)));
 #endif
@@ -13996,9 +14000,6 @@ abi_long do_syscall(CPUArchState *cpu_env, int num, abi_long arg1,
 {
     CPUState *cpu = env_cpu(cpu_env);
     abi_long ret;
-#ifdef QEMU_FIBERS
-    fibers_call_scheduler();
-#endif
 #ifdef DEBUG_ERESTARTSYS
     /* Debug-only code for exercising the syscall-restart code paths
      * in the per-architecture cpu main loops: restart every syscall

@@ -4,7 +4,9 @@
 #include "fibers-types.h"
 #include "qemu/queue.h"
 
-#define GEN_SYSCALL_WRAPPER_SIGN(type, name, ...) type fibers_syscall_##name(__VA_ARGS__);
+#define DECLARE_FIBER_SYSCALL(type, name, ...) type fiber_syscall_##name(__VA_ARGS__);
+#define DEFINE_FIBER_SYSCALL(type, name, ...) type fiber_syscall_##name(__VA_ARGS__) 
+#define fiber_syscall(name) fiber_syscall_##name
 
 // Uncomment the line below to enable debug output
 //#define FIBER_DEBUG

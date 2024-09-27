@@ -8,20 +8,20 @@
 
 static uint32_t xorshift_state = 123456789;
 
-static uint32_t xorshift32(void) {
+static inline uint32_t xorshift32(void) {
     xorshift_state ^= (xorshift_state << 13);
     xorshift_state ^= (xorshift_state >> 17);
     xorshift_state ^= (xorshift_state << 5);
     return xorshift_state;
 }
 
-void fibers_init(CPUArchState *cpu)
+void fiber_init(CPUArchState *cpu)
 {
-   fibers_futex_init();
-   fibers_thread_init(cpu);
+   fiber_futex_init();
+   fiber_thread_init(cpu);
 }
 
-void fibers_call_scheduler(void)
+void fiber_invoke_scheduler(void)
 {
    int available_threads = pth_ctrl(PTH_CTRL_GETTHREADS_NEW | PTH_CTRL_GETTHREADS_READY | PTH_CTRL_GETTHREADS_SUSPENDED);
    if (available_threads > 0) {
@@ -33,9 +33,9 @@ void fibers_call_scheduler(void)
    }
 }
 
-void fibers_fork_end(bool child) {
+void fiber_fork_end(bool child) {
    if(child) {
-      fibers_thread_clear_all();
-      fibers_clean_futex();
+      fiber_thread_clear_all();
+      fiber_clean_futex();
    }
 }

@@ -1,2 +1,2 @@
-void fibers_futex_init(void);
-void fibers_clean_futex(void);
+void fiber_futex_init(void);
+void fiber_clean_futex(void);
